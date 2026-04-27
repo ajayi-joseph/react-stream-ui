@@ -10,32 +10,53 @@ export type UseStreamingMessageResult = {
 
 let messageCounter = 0;
 
-export function useStreamingMessage(stream: StreamSource | undefined): UseStreamingMessageResult {
+export function useStreamingMessage(
+  stream: StreamSource | undefined,
+  signal?: AbortSignal,
+): UseStreamingMessageResult {
   const [message, setMessage] = useState<Message>(() => emptyMessage());
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<Error | undefined>(undefined);
-  const abortRef = useRef(false);
+  const unmountedRef = useRef(false);
 
   useEffect(() => {
     if (!stream) return;
-    abortRef.current = false;
+    if (signal?.aborted) return;
+
+    unmountedRef.current = false;
     setMessage(emptyMessage());
     setError(undefined);
     setIsStreaming(true);
 
     const blocks: ContentBlock[] = [];
     const toolIndex = new Map<string, number>();
+    const iter = stream[Symbol.asyncIterator]();
+    let cancelled = false;
+
+    const releaseProducer = () => {
+      iter.return?.().catch(() => {});
+    };
+
+    const onSignalAbort = () => {
+      cancelled = true;
+      releaseProducer();
+    };
+
+    signal?.addEventListener("abort", onSignalAbort);
 
     const commit = () => {
-      if (abortRef.current) return;
+      if (unmountedRef.current) return;
       setMessage((prev) => ({ ...prev, content: blocks.map(cloneBlock) }));
     };
 
     (async () => {
       try {
-        for await (const chunk of stream) {
-          if (abortRef.current) return;
+        while (true) {
+          const next = await iter.next();
+          if (next.done) break;
+          if (unmountedRef.current || cancelled) break;
 
+          const chunk = next.value;
           switch (chunk.type) {
             case "text-delta":
               appendText(blocks, "text", chunk.text);
@@ -84,16 +105,18 @@ export function useStreamingMessage(stream: StreamSource | undefined): UseStream
           commit();
         }
       } catch (e) {
-        if (!abortRef.current) setError(e instanceof Error ? e : new Error(String(e)));
+        if (!unmountedRef.current) setError(e instanceof Error ? e : new Error(String(e)));
       } finally {
-        if (!abortRef.current) setIsStreaming(false);
+        if (!unmountedRef.current) setIsStreaming(false);
       }
     })();
 
     return () => {
-      abortRef.current = true;
+      unmountedRef.current = true;
+      signal?.removeEventListener("abort", onSignalAbort);
+      releaseProducer();
     };
-  }, [stream]);
+  }, [stream, signal]);
 
   return { message, isStreaming, error };
 }
