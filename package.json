@@ -15,10 +15,10 @@
     "tool-use"
   ],
   "license": "MIT",
-  "author": "",
+  "author": "ajayi-joseph",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OWNER/react-stream-ui.git"
+    "url": "git+https://github.com/ajayi-joseph/react-stream-ui.git"
   },
   "type": "module",
   "main": "./dist/index.cjs",
