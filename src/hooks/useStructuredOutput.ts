@@ -12,6 +12,7 @@ export type UseStructuredOutputResult<T> = {
 
 export function useStructuredOutput<T = unknown>(
   stream: StreamSource | undefined,
+  signal?: AbortSignal,
 ): UseStructuredOutputResult<T> {
   const [state, setState] = useState<UseStructuredOutputResult<T>>(() => ({
     value: undefined,
@@ -20,20 +21,38 @@ export function useStructuredOutput<T = unknown>(
     isStreaming: false,
     error: undefined,
   }));
-  const abortRef = useRef(false);
+  const unmountedRef = useRef(false);
 
   useEffect(() => {
     if (!stream) return;
-    abortRef.current = false;
+    if (signal?.aborted) return;
+
+    unmountedRef.current = false;
     setState({ value: undefined, raw: "", isPartial: true, isStreaming: true, error: undefined });
 
+    const iter = stream[Symbol.asyncIterator]();
+    let cancelled = false;
     let raw = "";
+
+    const releaseProducer = () => {
+      iter.return?.().catch(() => {});
+    };
+
+    const onSignalAbort = () => {
+      cancelled = true;
+      releaseProducer();
+    };
+
+    signal?.addEventListener("abort", onSignalAbort);
 
     (async () => {
       try {
-        for await (const chunk of stream) {
-          if (abortRef.current) return;
+        while (true) {
+          const next = await iter.next();
+          if (next.done) break;
+          if (unmountedRef.current || cancelled) break;
 
+          const chunk = next.value;
           // Treat both text and tool-call deltas as JSON source — whichever the
           // caller pipes in. Ignore everything else.
           if (chunk.type === "text-delta") raw += chunk.text;
@@ -43,6 +62,7 @@ export function useStructuredOutput<T = unknown>(
           } else continue;
 
           const parsed = parsePartialJSON<T>(raw);
+          if (unmountedRef.current) break;
           setState({
             value: parsed.value,
             raw,
@@ -51,7 +71,7 @@ export function useStructuredOutput<T = unknown>(
             error: undefined,
           });
         }
-        if (!abortRef.current) {
+        if (!unmountedRef.current) {
           const parsed = parsePartialJSON<T>(raw);
           setState({
             value: parsed.value,
@@ -62,7 +82,7 @@ export function useStructuredOutput<T = unknown>(
           });
         }
       } catch (e) {
-        if (!abortRef.current) {
+        if (!unmountedRef.current) {
           setState((prev) => ({
             ...prev,
             isStreaming: false,
@@ -73,9 +93,11 @@ export function useStructuredOutput<T = unknown>(
     })();
 
     return () => {
-      abortRef.current = true;
+      unmountedRef.current = true;
+      signal?.removeEventListener("abort", onSignalAbort);
+      releaseProducer();
     };
-  }, [stream]);
+  }, [stream, signal]);
 
   return state;
 }
