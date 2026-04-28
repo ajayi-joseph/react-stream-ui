@@ -45,14 +45,26 @@ const { value, isPartial } = useStructuredOutput<{ items: string[] }>(stream);
 
 ## API
 
-- `useStreamingMessage(stream)` — accumulate chunks into a `Message` with text, thinking, and tool-call blocks
+- `useStreamingMessage(stream, signal?)` — accumulate chunks into a `Message` with text, thinking, and tool-call blocks
 - `useToolCall(message, id)` — selector for a single tool call's state
-- `useStructuredOutput<T>(stream)` — typed partial JSON value that fills in as it streams
+- `useStructuredOutput<T>(stream, signal?)` — typed partial JSON value that fills in as it streams
 - `parsePartialJSON(input)` — the underlying parser, exported for direct use
+
+## Cancellation
+
+Pass an `AbortSignal` to stop a stream from outside the component. Unmounting also cancels — both paths call `iter.return()` on the iterator so producers get a chance to release resources.
+
+```tsx
+const controller = useMemo(() => new AbortController(), []);
+const { message } = useStreamingMessage(stream, controller.signal);
+// later: controller.abort();
+```
 
 ## Providers
 
-`react-stream-ui` doesn't talk to any LLM directly. You bring the stream — adapters for Anthropic, OpenAI, etc. are planned as separate packages so the core stays tiny and dependency-free.
+`react-stream-ui` doesn't talk to any LLM directly. You bring the stream — official adapters for Anthropic, OpenAI, etc. are planned as separate packages so the core stays tiny and dependency-free.
+
+A reference OpenAI adapter lives at [`examples/adapters/openai.ts`](./examples/adapters/openai.ts) — copy it into your project or use it as a template for other providers. It maps OpenAI's `ChatCompletionChunk` stream to the `StreamChunk` shape the hooks consume.
 
 ## License
 
