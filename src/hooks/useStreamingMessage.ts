@@ -1,10 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import type { ContentBlock, Message, StreamSource, ToolCallBlock } from "../types.js";
+import type {
+  ContentBlock,
+  FinishReason,
+  Message,
+  StreamSource,
+  ToolCallBlock,
+} from "../types.js";
 import { parsePartialJSON } from "../parsers/partial-json.js";
 
 export type UseStreamingMessageResult = {
   message: Message;
   isStreaming: boolean;
+  finishReason: FinishReason | undefined;
   error: Error | undefined;
 };
 
@@ -16,6 +23,7 @@ export function useStreamingMessage(
 ): UseStreamingMessageResult {
   const [message, setMessage] = useState<Message>(() => emptyMessage());
   const [isStreaming, setIsStreaming] = useState(false);
+  const [finishReason, setFinishReason] = useState<FinishReason | undefined>(undefined);
   const [error, setError] = useState<Error | undefined>(undefined);
   const unmountedRef = useRef(false);
 
@@ -26,6 +34,7 @@ export function useStreamingMessage(
     unmountedRef.current = false;
     setMessage(emptyMessage());
     setError(undefined);
+    setFinishReason(undefined);
     setIsStreaming(true);
 
     const blocks: ContentBlock[] = [];
@@ -97,9 +106,10 @@ export function useStreamingMessage(
               break;
             }
             case "finish":
-              if (chunk.reason === "error" && chunk.error) {
-                throw new Error(chunk.error);
+              if (chunk.reason === "error") {
+                throw new Error(chunk.error ?? "stream errored");
               }
+              if (!unmountedRef.current) setFinishReason(chunk.reason);
               break;
           }
           commit();
@@ -118,7 +128,7 @@ export function useStreamingMessage(
     };
   }, [stream, signal]);
 
-  return { message, isStreaming, error };
+  return { message, isStreaming, finishReason, error };
 }
 
 function emptyMessage(): Message {
