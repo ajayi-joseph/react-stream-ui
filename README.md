@@ -16,31 +16,70 @@ npm install react-stream-ui
 
 ## Quick start
 
-```tsx
-import { useStreamingMessage, useToolCall } from "react-stream-ui";
+The hook takes any `AsyncIterable<StreamChunk>` and gives you a React-state view of the assistant's response:
 
-function Assistant({ stream }) {
+```tsx
+import { useStreamingMessage } from "react-stream-ui";
+import type { StreamSource } from "react-stream-ui";
+
+function Assistant({ stream }: { stream: StreamSource }) {
   const { message, isStreaming } = useStreamingMessage(stream);
 
   return (
     <div>
       {message.content.map((block, i) => {
         if (block.type === "text") return <p key={i}>{block.text}</p>;
-        if (block.type === "thinking") return <Thought key={i} text={block.text} />;
-        if (block.type === "tool-call") return <ToolCall key={i} call={block} />;
+        if (block.type === "thinking") return <pre key={i}>{block.text}</pre>;
+        if (block.type === "tool-call") {
+          return (
+            <pre key={i}>
+              {block.name}({JSON.stringify(block.args)})
+              {block.isPartial && " (streaming…)"}
+            </pre>
+          );
+        }
         return null;
       })}
-      {isStreaming && <Cursor />}
+      {isStreaming && <span aria-label="streaming">▍</span>}
     </div>
   );
 }
 ```
 
+## End-to-end with a provider
+
+You bring the stream. The reference adapters convert a provider SDK's stream into the `StreamChunk` shape the hooks consume. Below is the OpenAI flavor running in a React Server Component (so the API key stays on the server):
+
+```tsx
+import OpenAI from "openai";
+import { fromOpenAIStream } from "./adapters/openai"; // copy from examples/adapters/
+
+const client = new OpenAI();
+
+async function* getStream() {
+  const completion = await client.chat.completions.create({
+    model: "gpt-4o-mini",
+    stream: true,
+    messages: [{ role: "user", content: "Hello!" }],
+  });
+  yield* fromOpenAIStream(completion);
+}
+
+export default function Page() {
+  return <Assistant stream={getStream()} />;
+}
+```
+
+For browser-side rendering, proxy the request through your backend and parse the chunks back into the same `AsyncIterable` shape — the hook doesn't care where the stream came from.
+
 ## Streaming structured output
+
+For typed JSON outputs (function call args, structured generation), `useStructuredOutput` gives you a typed value that fills in as the model emits tokens:
 
 ```tsx
 const { value, isPartial } = useStructuredOutput<{ items: string[] }>(stream);
-// value.items renders incrementally as the model emits JSON
+// value?.items renders progressively: ["a"], ["a","b"], … as JSON arrives.
+// isPartial flips to false once the stream emits its terminal finish chunk.
 ```
 
 ## API
@@ -76,7 +115,7 @@ const { message } = useStreamingMessage(stream, controller.signal);
 
 `react-stream-ui` doesn't talk to any LLM directly. You bring the stream — official adapters for Anthropic, OpenAI, etc. are planned as separate packages so the core stays tiny and dependency-free.
 
-Reference adapters for [OpenAI](./examples/adapters/openai.ts) and [Anthropic](./examples/adapters/anthropic.ts) live in `examples/adapters/` — copy them into your project or use them as templates for other providers. They map each provider's native chunk type to the `StreamChunk` shape the hooks consume.
+Reference adapters for [OpenAI](https://github.com/ajayi-joseph/react-stream-ui/blob/master/examples/adapters/openai.ts) and [Anthropic](https://github.com/ajayi-joseph/react-stream-ui/blob/master/examples/adapters/anthropic.ts) live in `examples/adapters/` — copy them into your project or use them as templates for other providers. They map each provider's native chunk type to the `StreamChunk` shape the hooks consume.
 
 ## License
 
