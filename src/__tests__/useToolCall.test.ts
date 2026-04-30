@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useToolCall } from "../hooks/useToolCall.js";
-import type { Message } from "../types.js";
+import type { AssistantMessage } from "../types.js";
 
-const message: Message = {
+const message: AssistantMessage = {
   id: "m1",
   role: "assistant",
   content: [
@@ -39,7 +39,7 @@ describe("useToolCall", () => {
   });
 
   it("returns undefined when the message has no tool-call blocks", () => {
-    const m: Message = {
+    const m: AssistantMessage = {
       id: "m2",
       role: "assistant",
       content: [{ type: "text", text: "no tools here" }],
