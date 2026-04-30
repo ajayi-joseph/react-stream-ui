@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import type {
   ContentBlock,
   FinishReason,
-  Message,
+  AssistantMessage,
   StreamSource,
   ToolCallBlock,
 } from "../types.js";
 import { parsePartialJSON } from "../parsers/partial-json.js";
 
 export type UseStreamingMessageResult = {
-  message: Message;
+  message: AssistantMessage;
   isStreaming: boolean;
   finishReason: FinishReason | undefined;
   error: Error | undefined;
@@ -21,7 +21,7 @@ export function useStreamingMessage(
   stream: StreamSource | undefined,
   signal?: AbortSignal,
 ): UseStreamingMessageResult {
-  const [message, setMessage] = useState<Message>(() => emptyMessage());
+  const [message, setMessage] = useState<AssistantMessage>(() => emptyMessage());
   const [isStreaming, setIsStreaming] = useState(false);
   const [finishReason, setFinishReason] = useState<FinishReason | undefined>(undefined);
   const [error, setError] = useState<Error | undefined>(undefined);
@@ -131,7 +131,7 @@ export function useStreamingMessage(
   return { message, isStreaming, finishReason, error };
 }
 
-function emptyMessage(): Message {
+function emptyMessage(): AssistantMessage {
   return { id: `msg_${++messageCounter}`, role: "assistant", content: [] };
 }
 
