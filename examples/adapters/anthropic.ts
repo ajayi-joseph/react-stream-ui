@@ -5,7 +5,7 @@ import type {
 import type { StreamChunk } from "../../src/index.js";
 
 // Convert an Anthropic Messages stream into the StreamChunk shape that
-// react-stream-ui's hooks consume. Works with the SDK's MessageStream as well
+// react-partial-stream's hooks consume. Works with the SDK's MessageStream as well
 // as any AsyncIterable<RawMessageStreamEvent> (e.g. a parsed SSE reader from
 // your own backend).
 export async function* fromAnthropicStream(

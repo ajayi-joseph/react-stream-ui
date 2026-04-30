@@ -2,7 +2,7 @@ import type { ChatCompletionChunk } from "openai/resources/chat/completions";
 import type { StreamChunk } from "../../src/index.js";
 
 // Convert an OpenAI Chat Completions stream into the StreamChunk shape that
-// react-stream-ui's hooks consume. Works with anything async-iterable that
+// react-partial-stream's hooks consume. Works with anything async-iterable that
 // yields ChatCompletionChunk — the SDK's own `Stream` and a hand-parsed SSE
 // reader both qualify.
 export async function* fromOpenAIStream(
