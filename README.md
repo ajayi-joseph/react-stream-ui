@@ -1,17 +1,17 @@
-# react-stream-ui
+# react-partial-stream
 
-Headless React primitives for streaming LLM responses. Provider-agnostic, UI-agnostic, with first-class support for **partial JSON streaming** so tool-call arguments and structured outputs render as they arrive.
+Headless React (and React Native) primitives for streaming LLM responses. Provider-agnostic, UI-agnostic, with first-class support for **partial JSON streaming** so tool-call arguments and structured outputs render as they arrive.
 
 ## Why
 
-Most React AI libraries either ship opinionated UI (chat bubbles, prebuilt panels) or couple tightly to one provider. `react-stream-ui` is just hooks and types: feed it a stream of chunks, get back React state you can render however you want.
+Most React AI libraries either ship opinionated UI (chat bubbles, prebuilt panels) or couple tightly to one provider. `react-partial-stream` is just hooks and types: feed it a stream of chunks, get back React state you can render however you want.
 
 The wedge: **partial JSON parsing**. While a tool call's arguments are still streaming in, you can already read the partially-parsed object — type-safe, with `isPartial` flags so you know what's settled.
 
 ## Install
 
 ```bash
-npm install react-stream-ui
+npm install react-partial-stream
 ```
 
 ## Quick start
@@ -19,8 +19,8 @@ npm install react-stream-ui
 The hook takes any `AsyncIterable<StreamChunk>` and gives you a React-state view of the assistant's response:
 
 ```tsx
-import { useStreamingMessage } from "react-stream-ui";
-import type { StreamSource } from "react-stream-ui";
+import { useStreamingMessage } from "react-partial-stream";
+import type { StreamSource } from "react-partial-stream";
 
 function Assistant({ stream }: { stream: StreamSource }) {
   const { message, isStreaming } = useStreamingMessage(stream);
@@ -113,9 +113,15 @@ const { message } = useStreamingMessage(stream, controller.signal);
 
 ## Providers
 
-`react-stream-ui` doesn't talk to any LLM directly. You bring the stream — official adapters for Anthropic, OpenAI, etc. are planned as separate packages so the core stays tiny and dependency-free.
+`react-partial-stream` doesn't talk to any LLM directly. You bring the stream — official adapters for Anthropic, OpenAI, etc. are planned as separate packages so the core stays tiny and dependency-free.
 
-Reference adapters for [OpenAI](https://github.com/ajayi-joseph/react-stream-ui/blob/master/examples/adapters/openai.ts) and [Anthropic](https://github.com/ajayi-joseph/react-stream-ui/blob/master/examples/adapters/anthropic.ts) live in `examples/adapters/` — copy them into your project or use them as templates for other providers. They map each provider's native chunk type to the `StreamChunk` shape the hooks consume.
+Reference adapters for [OpenAI](https://github.com/ajayi-joseph/react-partial-stream/blob/master/examples/adapters/openai.ts) and [Anthropic](https://github.com/ajayi-joseph/react-partial-stream/blob/master/examples/adapters/anthropic.ts) live in `examples/adapters/` — copy them into your project or use them as templates for other providers. They map each provider's native chunk type to the `StreamChunk` shape the hooks consume.
+
+## React Native
+
+The hooks are platform-agnostic — they only use React core, `AbortController`, and async iterators, all supported by Hermes. Render to `<View>`/`<Text>` instead of the web tags shown in the examples.
+
+The catch is getting a stream *into* RN: `fetch` on RN doesn't support streaming response bodies out of the box, so you'll typically need a polyfill like [react-native-fetch-api](https://github.com/react-native-community/fetch) or proxy through your backend. Once you produce an `AsyncIterable<StreamChunk>`, the hooks work identically.
 
 ## License
 
