@@ -8,7 +8,7 @@ import type { ChatCompletionChunk } from "openai/resources/chat/completions";
 import {
   useStreamingMessage,
   useToolCall,
-  type Message,
+  type AssistantMessage,
   type StreamSource,
 } from "../src/index.js";
 import { fromOpenAIStream } from "./adapters/openai.js";
@@ -44,7 +44,7 @@ export function OpenAIDemo({ chunkStream }: { chunkStream: ChunkStreamFactory })
   );
 }
 
-function ToolCallView({ message, id }: { message: Message; id: string }) {
+function ToolCallView({ message, id }: { message: AssistantMessage; id: string }) {
   const call = useToolCall(message, id);
   if (!call) return null;
   return (
