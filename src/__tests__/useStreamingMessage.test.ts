@@ -14,6 +14,7 @@ describe("useStreamingMessage — accumulation", () => {
 
     await waitFor(() => expect(result.current.isStreaming).toBe(false));
     expect(result.current.message.content).toEqual([{ type: "text", text: "hello world" }]);
+    expect(result.current.finishReason).toBe("stop");
     expect(result.current.error).toBeUndefined();
   });
 
@@ -51,6 +52,19 @@ describe("useStreamingMessage — accumulation", () => {
       args: { q: "hi" },
       isPartial: false,
     });
+    expect(result.current.finishReason).toBe("tool_use");
+  });
+
+  it("captures finishReason=length when the model is truncated", async () => {
+    const stream = makeStream([
+      { type: "text-delta", text: "this got cut off" },
+      { type: "finish", reason: "length" },
+    ]);
+    const { result } = renderHook(() => useStreamingMessage(stream));
+
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+    expect(result.current.finishReason).toBe("length");
+    expect(result.current.error).toBeUndefined();
   });
 
   it("ignores tool-call deltas that arrive before the matching start", async () => {
@@ -77,6 +91,7 @@ describe("useStreamingMessage — errors", () => {
     await waitFor(() => expect(result.current.error).toBeDefined());
     expect(result.current.error?.message).toBe("rate limited");
     expect(result.current.isStreaming).toBe(false);
+    expect(result.current.finishReason).toBeUndefined();
   });
 });
 
