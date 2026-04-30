@@ -21,7 +21,7 @@ export type ToolCallBlock = {
 
 export type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock;
 
-export type Message = {
+export type AssistantMessage = {
   id: string;
   role: "assistant";
   content: ContentBlock[];
