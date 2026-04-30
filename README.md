@@ -45,7 +45,7 @@ const { value, isPartial } = useStructuredOutput<{ items: string[] }>(stream);
 
 ## API
 
-- `useStreamingMessage(stream, signal?)` — accumulate chunks into a `Message` with text, thinking, and tool-call blocks
+- `useStreamingMessage(stream, signal?)` — accumulate chunks into an `AssistantMessage` with text, thinking, and tool-call blocks
 - `useToolCall(message, id)` — selector for a single tool call's state
 - `useStructuredOutput<T>(stream, signal?)` — typed partial JSON value that fills in as it streams
 - `parsePartialJSON(input)` — the underlying parser, exported for direct use
