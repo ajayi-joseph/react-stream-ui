@@ -15,6 +15,7 @@ describe("useStructuredOutput — accumulation", () => {
     await waitFor(() => expect(result.current.isStreaming).toBe(false));
     expect(result.current.value).toEqual({ items: ["a", "b"] });
     expect(result.current.isPartial).toBe(false);
+    expect(result.current.finishReason).toBe("stop");
     expect(result.current.error).toBeUndefined();
   });
 
@@ -31,6 +32,20 @@ describe("useStructuredOutput — accumulation", () => {
     await waitFor(() => expect(result.current.isStreaming).toBe(false));
     expect(result.current.value).toEqual({ n: 1 });
     expect(result.current.isPartial).toBe(false);
+    expect(result.current.finishReason).toBe("tool_use");
+  });
+
+  it("captures finishReason=length when truncation cuts off the JSON", async () => {
+    const stream = makeStream([
+      { type: "text-delta", text: '{"a":1,"b":2' },
+      { type: "finish", reason: "length" },
+    ]);
+    const { result } = renderHook(() => useStructuredOutput<{ a: number; b: number }>(stream));
+
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+    expect(result.current.value).toEqual({ a: 1, b: 2 });
+    expect(result.current.isPartial).toBe(true);
+    expect(result.current.finishReason).toBe("length");
   });
 
   it("exposes a partial value mid-stream and finalizes when closed", async () => {
@@ -64,6 +79,7 @@ describe("useStructuredOutput — errors", () => {
     await waitFor(() => expect(result.current.error).toBeDefined());
     expect(result.current.error?.message).toBe("boom");
     expect(result.current.isStreaming).toBe(false);
+    expect(result.current.finishReason).toBeUndefined();
   });
 });
 
