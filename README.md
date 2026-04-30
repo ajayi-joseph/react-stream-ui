@@ -50,6 +50,18 @@ const { value, isPartial } = useStructuredOutput<{ items: string[] }>(stream);
 - `useStructuredOutput<T>(stream, signal?)` — typed partial JSON value that fills in as it streams
 - `parsePartialJSON(input)` — the underlying parser, exported for direct use
 
+## Knowing why a stream ended
+
+Both stream hooks return `finishReason: "stop" | "length" | "tool_use" | undefined`. It stays undefined while streaming and is set when the stream emits its terminal `finish` chunk, so you can distinguish a clean completion from a token-limit truncation or a tool-call handoff. If the stream errored, `error` is set and `finishReason` stays undefined — the two are mutually exclusive.
+
+```tsx
+const { message, isStreaming, finishReason, error } = useStreamingMessage(stream);
+
+if (error) return <Error message={error.message} />;
+if (!isStreaming && finishReason === "length") return <Truncated message={message} />;
+if (!isStreaming && finishReason === "tool_use") return <RunTool message={message} />;
+```
+
 ## Cancellation
 
 Pass an `AbortSignal` to stop a stream from outside the component. Unmounting also cancels — both paths call `iter.return()` on the iterator so producers get a chance to release resources.
@@ -64,7 +76,7 @@ const { message } = useStreamingMessage(stream, controller.signal);
 
 `react-stream-ui` doesn't talk to any LLM directly. You bring the stream — official adapters for Anthropic, OpenAI, etc. are planned as separate packages so the core stays tiny and dependency-free.
 
-A reference OpenAI adapter lives at [`examples/adapters/openai.ts`](./examples/adapters/openai.ts) — copy it into your project or use it as a template for other providers. It maps OpenAI's `ChatCompletionChunk` stream to the `StreamChunk` shape the hooks consume.
+Reference adapters for [OpenAI](./examples/adapters/openai.ts) and [Anthropic](./examples/adapters/anthropic.ts) live in `examples/adapters/` — copy them into your project or use them as templates for other providers. They map each provider's native chunk type to the `StreamChunk` shape the hooks consume.
 
 ## License
 
