@@ -7,6 +7,7 @@ export { parsePartialJSON } from "./parsers/partial-json.js";
 export type { PartialJSONResult } from "./parsers/partial-json.js";
 export type {
   ContentBlock,
+  FinishReason,
   Message,
   StreamChunk,
   StreamSource,
