@@ -87,6 +87,8 @@ function repair(input: string): string {
     } else {
       // Drop a trailing backslash that would otherwise escape our closing quote.
       if (escape) out = out.slice(0, -1);
+      // Drop an unterminated `\u<hex>` escape — JSON.parse rejects fewer than 4 hex digits.
+      out = stripIncompleteUnicodeEscape(out);
       out += '"';
     }
   } else if (pendingKeyStart >= 0) {
@@ -146,8 +148,9 @@ function trimDanglingLiteral(s: string): string {
     return s;
   }
 
-  // Complete numbers: digits with at most one `.` not at the end, optional leading `-`.
-  if (/^-?\d+(?:\.\d+)?$/.test(tail)) return s;
+  // Complete numbers: optional leading `-`, integer part, optional fraction,
+  // optional exponent (e.g. `1.5e-3`).
+  if (/^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(tail)) return s;
 
   // Otherwise it's incomplete — drop it.
   let head = stripTrailingWs(s.slice(0, end));
@@ -196,4 +199,32 @@ function isValueChar(c: string): boolean {
     c === "-" ||
     c === "+"
   );
+}
+
+function isHexDigit(c: string): boolean {
+  return (
+    (c >= "0" && c <= "9") ||
+    (c >= "a" && c <= "f") ||
+    (c >= "A" && c <= "F")
+  );
+}
+
+function stripIncompleteUnicodeEscape(s: string): string {
+  // Walk back over up to 3 trailing hex digits. Four would be a complete
+  // escape; we only strip when fewer are present and they're preceded by an
+  // unescaped `\u`.
+  let hexEnd = s.length;
+  while (hexEnd > 0 && isHexDigit(s[hexEnd - 1]!)) hexEnd--;
+  const hexCount = s.length - hexEnd;
+  if (hexCount >= 4) return s;
+  if (hexEnd < 1 || s[hexEnd - 1] !== "u") return s;
+
+  let backslashes = 0;
+  let j = hexEnd - 2;
+  while (j >= 0 && s[j] === "\\") {
+    backslashes++;
+    j--;
+  }
+  if (backslashes % 2 === 1) return s.slice(0, hexEnd - 2);
+  return s;
 }

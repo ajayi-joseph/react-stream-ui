@@ -108,3 +108,61 @@ describe("parsePartialJSON — partial inputs", () => {
     }
   });
 });
+
+describe("parsePartialJSON — scientific notation", () => {
+  it("keeps a complete positive exponent", () => {
+    const r = parsePartialJSON('{"a":1.5e3');
+    expect(r.value).toEqual({ a: 1500 });
+    expect(r.isPartial).toBe(true);
+  });
+
+  it("keeps a complete signed exponent", () => {
+    const r = parsePartialJSON('{"a":1.5e-3');
+    expect(r.value).toEqual({ a: 0.0015 });
+    expect(r.isPartial).toBe(true);
+  });
+
+  it("keeps a complete exponent with explicit plus sign", () => {
+    const r = parsePartialJSON('{"a":1e+5');
+    expect(r.value).toEqual({ a: 100000 });
+    expect(r.isPartial).toBe(true);
+  });
+
+  it("drops a partial exponent with no digits yet", () => {
+    const r = parsePartialJSON('{"a":1.5e');
+    expect(r.value).toEqual({});
+    expect(r.isPartial).toBe(true);
+  });
+
+  it("drops a partial signed exponent with no digits yet", () => {
+    const r = parsePartialJSON('{"a":1.5e-');
+    expect(r.value).toEqual({});
+    expect(r.isPartial).toBe(true);
+  });
+});
+
+describe("parsePartialJSON — unicode escapes", () => {
+  it("preserves earlier fields when the string ends mid-escape with no hex digits", () => {
+    const r = parsePartialJSON('{"a":"hello \\u');
+    expect(r.value).toEqual({ a: "hello " });
+    expect(r.isPartial).toBe(true);
+  });
+
+  it("preserves earlier fields when the string ends mid-escape with some hex digits", () => {
+    const r = parsePartialJSON('{"a":"hi \\u00A');
+    expect(r.value).toEqual({ a: "hi " });
+    expect(r.isPartial).toBe(true);
+  });
+
+  it("keeps a complete \\u escape at end of an unterminated string", () => {
+    const r = parsePartialJSON('{"a":"\\u00ff');
+    expect(r.value).toEqual({ a: "ÿ" });
+    expect(r.isPartial).toBe(true);
+  });
+
+  it("treats `\\\\u00` as a literal backslash + u00 — not an incomplete escape", () => {
+    const r = parsePartialJSON('{"a":"x\\\\u00');
+    expect(r.value).toEqual({ a: "x\\u00" });
+    expect(r.isPartial).toBe(true);
+  });
+});
