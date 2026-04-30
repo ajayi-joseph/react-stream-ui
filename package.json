@@ -1,6 +1,6 @@
 {
   "name": "react-partial-stream",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Headless React (and React Native) primitives for streaming LLM responses — text, tool calls, thinking, and partial JSON.",
   "keywords": [
     "react",
