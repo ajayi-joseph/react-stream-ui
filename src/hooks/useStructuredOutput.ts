@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { StreamSource } from "../types.js";
+import type { FinishReason, StreamSource } from "../types.js";
 import { parsePartialJSON } from "../parsers/partial-json.js";
 
 export type UseStructuredOutputResult<T> = {
@@ -7,6 +7,7 @@ export type UseStructuredOutputResult<T> = {
   raw: string;
   isPartial: boolean;
   isStreaming: boolean;
+  finishReason: FinishReason | undefined;
   error: Error | undefined;
 };
 
@@ -19,6 +20,7 @@ export function useStructuredOutput<T = unknown>(
     raw: "",
     isPartial: true,
     isStreaming: false,
+    finishReason: undefined,
     error: undefined,
   }));
   const unmountedRef = useRef(false);
@@ -28,11 +30,19 @@ export function useStructuredOutput<T = unknown>(
     if (signal?.aborted) return;
 
     unmountedRef.current = false;
-    setState({ value: undefined, raw: "", isPartial: true, isStreaming: true, error: undefined });
+    setState({
+      value: undefined,
+      raw: "",
+      isPartial: true,
+      isStreaming: true,
+      finishReason: undefined,
+      error: undefined,
+    });
 
     const iter = stream[Symbol.asyncIterator]();
     let cancelled = false;
     let raw = "";
+    let finishReason: FinishReason | undefined;
 
     const releaseProducer = () => {
       iter.return?.().catch(() => {});
@@ -54,11 +64,15 @@ export function useStructuredOutput<T = unknown>(
 
           const chunk = next.value;
           // Treat both text and tool-call deltas as JSON source — whichever the
-          // caller pipes in. Ignore everything else.
+          // caller pipes in. Capture the terminal finish reason; ignore everything else.
           if (chunk.type === "text-delta") raw += chunk.text;
           else if (chunk.type === "tool-call-delta") raw += chunk.argsDelta;
-          else if (chunk.type === "finish" && chunk.reason === "error" && chunk.error) {
-            throw new Error(chunk.error);
+          else if (chunk.type === "finish") {
+            if (chunk.reason === "error") {
+              throw new Error(chunk.error ?? "stream errored");
+            }
+            finishReason = chunk.reason;
+            continue;
           } else continue;
 
           const parsed = parsePartialJSON<T>(raw);
@@ -68,6 +82,7 @@ export function useStructuredOutput<T = unknown>(
             raw,
             isPartial: parsed.isPartial,
             isStreaming: true,
+            finishReason: undefined,
             error: undefined,
           });
         }
@@ -78,6 +93,7 @@ export function useStructuredOutput<T = unknown>(
             raw,
             isPartial: parsed.isPartial,
             isStreaming: false,
+            finishReason,
             error: undefined,
           });
         }
