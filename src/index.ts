@@ -6,9 +6,9 @@ export type { UseStructuredOutputResult } from "./hooks/useStructuredOutput.js";
 export { parsePartialJSON } from "./parsers/partial-json.js";
 export type { PartialJSONResult } from "./parsers/partial-json.js";
 export type {
+  AssistantMessage,
   ContentBlock,
   FinishReason,
-  Message,
   StreamChunk,
   StreamSource,
   TextBlock,
